@@ -94,50 +94,34 @@ to command line using `python sofot/main.py -h`.
 <table>
   <tr>
     <th>Argument</th>
-    <th style="text-align: center">Type</th>
-    <th style="text-align: center">Required</th>
     <th>Description</th>
   </tr>
   <tr>
     <td><code>-h</code>, <code>--help</code></td>
-    <td style="text-align: center"></td>
-    <td style="text-align: center"></td>
     <td>Prints help.</td>
   </tr>
   <tr>
     <td><code>--dataset</code></td>
-    <td style="text-align: center"><code>str</code></td>
-    <td style="text-align: center">&bull;</td>
-    <td>Folder name in "data" folder to be used.</td>
+    <td><b>Required.</b> Folder name in "data" folder to be used.</td>
   </tr>
   <tr>
     <td><code>--video</code></td>
-    <td style="text-align: center"><code>str</code></td>
-    <td style="text-align: center"></td>
     <td>Run only on this video.</td>
   </tr>
   <tr>
     <td><code>--benchmark</code></td>
-    <td style="text-align: center"></td>
-    <td style="text-align: center"></td>
     <td>Run in benchmark mode, rendering, saving, and debugging is disabled.</td>
   </tr>
   <tr>
     <td><code>--render</code></td>
-    <td style="text-align: center"></td>
-    <td style="text-align: center"></td>
     <td>Render video of frames with bounding boxes.</td>
   </tr>
   <tr>
     <td><code>--save-bbox</code></td>
-    <td style="text-align: center"></td>
-    <td style="text-align: center"></td>
     <td>Save bounding boxes in files for each frame. Format of bounding box is "x1 y1 x2 y2" (upper left and lower right corner).</td>
   </tr>
   <tr>
     <td><code>--debug</code></td>
-    <td style="text-align: center"></td>
-    <td style="text-align: center"></td>
     <td>Run in debug mode. Stops after each frame is presented and prints debugging information to stdout.</td>
   </tr>
 </table>
