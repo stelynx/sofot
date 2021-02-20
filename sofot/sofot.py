@@ -82,7 +82,8 @@ class Sofot():
       __fps = round(self.nframes / __diff)
       print(f"[Sofot.track] benchmark finished, took {__diff} seconds for {self.nframes} frames -> {__fps} FPS")
       with open(util.file_benchmark(self.dataset), mode='a') as f:
-        f.write(f"{self.video},{__diff},{__fps}\n")
+        frame_first_err = self.frame_with_first_error if self.frame_with_first_error is not None else ""
+        f.write(f"{self.video},{__diff},{__fps},{self.error},{frame_first_err}\n")
 
     print(f"[Sofot.track] finished with error {self.error}" + (f" and first frame with error {self.frame_with_first_error}" if self.error > 0 else ""))
     
