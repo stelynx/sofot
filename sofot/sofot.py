@@ -1,3 +1,5 @@
+import time
+
 import cv2
 import numpy
 
@@ -15,11 +17,23 @@ ST_PARAMS = dict( maxCorners   = 20,
 
 
 class Sofot():
-  def __init__(self, video, annotations, lk_params=LK_PARAMS, st_params=ST_PARAMS, debug=False):
+  def __init__(self, dataset, video, annotations, lk_params=LK_PARAMS, st_params=ST_PARAMS, benchmark=False, render=False, save_bbox=False, debug=False):
+    assert not (render and debug), "[Sofot.__init__] cannot render video in debug mode"
+
+    if benchmark and (render or save_bbox or debug):
+      print("[Sofot.__init__] benchmark is turned on, disabling rendering, saving bounding boxes and debuging")
+      render = False
+      save_bbox = False
+      debug = False
+
+    self.dataset = dataset
     self.annotations = annotations
     self.video = video
     self.lk_params = lk_params
     self.st_params = st_params
+    self._benchmark = benchmark
+    self._render = render
+    self._save_bbox = save_bbox
     self._debug = debug
 
     self.current_frame = 1
@@ -30,9 +44,15 @@ class Sofot():
     self._bbox_color = numpy.random.randint(0, 255, (len(self.bboxes), 3))
 
   def track(self):
+    if self._render:
+      self.imgs_to_render = []
+
+    elif self._benchmark:
+      __start = time.time()
+
     print(f"[Sofot.track] started tracking video {self.video}")
     # Read starting frame and convert it to grayscale.
-    frame = util.img_for_video_frame(self.video, self.current_frame)
+    frame = util.img_for_video_frame(self.dataset, self.video, self.current_frame)
     self.__frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Calculate ROI masks and good optical flow points.
@@ -52,20 +72,41 @@ class Sofot():
 
     # Main loop.
     while self.current_frame < self.nframes:
+      if self._save_bbox:
+        util.write_bboxes_for_video_frame(self.dataset, self.bboxes, self.video, self.current_frame)
       self._step()
+
+    if self._benchmark:
+      __end = time.time()
+      __diff = round(__end - __start, 2)
+      __fps = round(self.nframes / __diff)
+      print(f"[Sofot.track] benchmark finished, took {__diff} seconds for {self.nframes} frames -> {__fps} FPS")
+      with open(util.file_benchmark(self.dataset), mode='a') as f:
+        f.write(f"{self.video},{__diff},{__fps}\n")
+
+    print(f"[Sofot.track] finished with error {self.error}" + (f" and first frame with error {self.frame_with_first_error}" if self.error > 0 else ""))
+    
+    if self._render:
+      print(f"[Sofot.track] rendering video ...")
+      out_file = util.render_filename_for_video(self.dataset, self.video)
+      out_h, out_w, _ = self.imgs_to_render[0].shape
+      out = cv2.VideoWriter(out_file, cv2.VideoWriter_fourcc(*"DIVX"), 30, (out_w, out_h))
+      for img in self.imgs_to_render:
+        out.write(img)
+      out.release()
+      print(f"[Sofot.track] video saved to {out_file}")
 
     # Close all windows at the end.
     cv2.destroyAllWindows()
 
-    # Print errors to the console.
-    print(f"[Sofot.track] finished with error {self.error}" + (f" and first frame with error {self.frame_with_first_error}" if self.error > 0 else ""))
-
   def _step(self):
     # Go to next frame.
     self.current_frame += 1
+    if self._debug:
+      print(f"Frame no.: {self.current_frame}")
 
     # Read frame and convert it to grayscale.
-    frame = util.img_for_video_frame(self.video, self.current_frame)
+    frame = util.img_for_video_frame(self.dataset, self.video, self.current_frame)
     frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Calculate optical flow for each object.
@@ -94,10 +135,10 @@ class Sofot():
       # Calculate and draw bounding box as [(x0, y0), (x1, y1)].
       xs, ys = zip(*of_points_good_new)
       bbox = [(min(xs), min(ys)), (max(xs), max(ys))]
-      frame = cv2.rectangle(frame, bbox[0], bbox[1], color=self._bbox_color[len(bboxes_new)].tolist(), thickness=2)
-
-      # Add frame to image.
-      img = cv2.add(frame, self.__disp_flow_mask)
+      if not self._benchmark:
+        frame = cv2.rectangle(frame, bbox[0], bbox[1], color=self._bbox_color[len(bboxes_new)].tolist(), thickness=2)
+        # Add frame to image.
+        frame = cv2.add(frame, self.__disp_flow_mask)
 
       # Add newly calculated points.
       of_points_new.append(of_points_good_new.reshape(-1, 1, 2))
@@ -115,7 +156,7 @@ class Sofot():
     i_annot = self.current_frame - 1
     bboxes_ground_truth = [[(bb[0], bb[1]), (bb[2], bb[3])] for bb in self.annotations[i_annot]]
     pairs_ground_truth = self._pair_bboxes(bboxes_new, bboxes_ground_truth)
-    diff = len(pairs) - len(pairs_ground_truth)
+    diff = len(bboxes_new) - len(pairs_ground_truth)
     if diff > 0:  # cannot be negative
       self.error += diff
       if self.frame_with_first_error is None:
@@ -125,12 +166,17 @@ class Sofot():
       print(pairs_ground_truth)
       print("error", self.error)
 
-    # Write error on screen.
-    img = cv2.putText(img, f"Error: {self.error}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 0, 255), thickness=1)
+    if not self._benchmark:
+      # Write error on screen.
+      frame = cv2.putText(frame, f"Error: {self.error}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 0, 255), thickness=1)
 
-    # Display image.
-    cv2.imshow("SOFOT", img)
-    cv2.waitKey(0 if self._debug else 1)
+      # Save image if rendering a video.
+      if self._render:
+        self.imgs_to_render.append(frame)
+
+      # Display image.
+      cv2.imshow("SOFOT", frame)
+      cv2.waitKey(0 if self._debug else 1)
 
     # Update previous gray frame, previous optical flow points, and previous bboxes.
     self.__frame_gray = frame_gray.copy()

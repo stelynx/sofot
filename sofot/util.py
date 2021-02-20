@@ -1,17 +1,49 @@
 import os
+from os.path import isdir
 
 import cv2
 import numpy
 import scipy.io
 
 
-def img_name_for_video_frame(video, frame):
-  return "data/modd1/{0}/images/{1}.jpg".format(f"0{video}"[-2:], (f"0000{frame}")[-5:])
+def get_videos_in_dataset(dataset):
+  dataset_path = os.path.join("data", dataset)
+  return sorted([name for name in os.listdir(dataset_path) if os.path.isdir(os.path.join(dataset_path, name))])
 
 
-def img_for_video_frame(video, frame):
-  print(img_name_for_video_frame(video, frame))
-  return cv2.imread(img_name_for_video_frame(video, frame))
+def create_sofot_dirs_for_dataset_videos(dataset, videos):
+  dataset_path = os.path.join("data", f"sofot_{dataset}")
+  if not os.path.exists(dataset_path):
+    os.mkdir(dataset_path)
+
+  for video in videos:
+    video_path = os.path.join(dataset_path, video)
+    if not os.path.exists(video_path):
+      os.mkdir(video_path)
+      os.mkdir(os.path.join(video_path, "detections"))
+
+
+def file_benchmark(dataset):
+  return os.path.join("data", f"sofot_{dataset}", "benchmark.csv")
+
+
+def write_bboxes_for_video_frame(dataset, bboxes, video, frame):
+  filename = os.path.join("data", f"sofot_{dataset}", video, "detections", "{}.txt".format((f"0000{frame}")[-5:]))
+  with open(filename, mode='w') as f:
+    for bbox in bboxes:
+      f.write(f"{bbox[0][0]} {bbox[0][1]} {bbox[1][0]} {bbox[1][1]}\n")
+
+
+def render_filename_for_video(dataset, video):
+  return os.path.join("data", f"sofot_{dataset}", video, "output.avi")
+
+
+def img_name_for_video_frame(dataset, video, frame):
+  return os.path.join("data", dataset, video, "images", "{}.jpg".format((f"0000{frame}")[-5:]))
+
+
+def img_for_video_frame(dataset, video, frame):
+  return cv2.imread(img_name_for_video_frame(dataset, video, frame))
 
 
 def iou(bb1, bb2):
@@ -62,6 +94,12 @@ def bbox_distance(bb1, bb2):
       d = dt
   
   return d
+
+
+def get_data(dataset):
+  if dataset == "modd1":
+    return get_modd1_data()
+
 
 def get_modd1_data():
   # Iterate over all 12 videos.
