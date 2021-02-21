@@ -263,12 +263,10 @@ please cite as
 
 ```
 @misc{Stelynx_SOFOT,
-  author = {Stelynx},
-  title = {SOFOT - Stelynx Optical Flow-based Object Tracker},
-  year = {2021},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/stelynx/sofot}}
+  author = {GitHub / Stelynx},
+  title = {{SOFOT - Stelynx Optical Flow-based Object Tracker}},
+  howpublished = {\url{https://github.com/stelynx/sofot}},
+  note = {Accessed: 2020-02-21}
 }
 ```
 
